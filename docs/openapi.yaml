@@ -1,0 +1,863 @@
+openapi: 3.0.3
+info:
+  title: Room Booking API
+  version: 1.0.0
+  description: >
+    REST API платформы бронирования переговорных. Успешные ответы: { data, meta? }.
+    Ошибки: { error: { code, message, details? } }.
+servers:
+  - url: http://localhost:3000/api
+    description: Локально (docker compose up)
+tags:
+  - { name: Auth }
+  - { name: Rooms }
+  - { name: Bookings }
+  - { name: Users }
+  - { name: Notifications }
+  - { name: Stats }
+
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Регистрация
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '201':
+          description: Пользователь создан
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Вход, выдача access и refresh токенов
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Токены
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/TokenPair' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { description: Пользователь заблокирован, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Обновление access токена
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+      responses:
+        '200':
+          description: Новая пара токенов
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/TokenPair' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Выход (отзыв refresh токена)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+      responses:
+        '204': { description: Выход выполнен }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Запрос ссылки восстановления (ссылка выводится в лог сервера)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '204': { description: Запрос принят (ответ одинаков для любого email) }
+        '400': { $ref: '#/components/responses/ValidationError' }
+
+  /auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Установка нового пароля по токену
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, newPassword]
+              properties:
+                token: { type: string }
+                newPassword: { type: string, minLength: 8 }
+      responses:
+        '204': { description: Пароль изменён }
+        '400': { $ref: '#/components/responses/ValidationError' }
+
+  /rooms:
+    get:
+      tags: [Rooms]
+      summary: Список комнат (поиск, фильтры, сортировка, пагинация на сервере)
+      parameters:
+        - { name: search, in: query, schema: { type: string }, description: Поиск по названию и описанию }
+        - { name: minCapacity, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: amenities, in: query, schema: { type: string }, description: 'id удобств через запятую, например 1,3' }
+        - { name: floor, in: query, schema: { type: integer } }
+        - { name: includeInactive, in: query, schema: { type: boolean }, description: Только для администратора }
+        - { name: sort, in: query, schema: { type: string, enum: [name, capacity, floor, -name, -capacity, -floor], default: name } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200':
+          description: Страница комнат
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Room' }
+                  meta: { $ref: '#/components/schemas/Meta' }
+    post:
+      tags: [Rooms]
+      summary: Создать комнату (admin)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RoomInput' }
+      responses:
+        '201':
+          description: Комната создана
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Room' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /rooms/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+    get:
+      tags: [Rooms]
+      summary: Карточка комнаты
+      responses:
+        '200':
+          description: Комната
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Room' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Rooms]
+      summary: Изменить комнату (admin)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RoomInput' }
+      responses:
+        '200':
+          description: Комната обновлена
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Room' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Rooms]
+      summary: Удалить комнату (admin); нельзя, если есть будущие бронирования
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204': { description: Удалено }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /rooms/{id}/availability:
+    get:
+      tags: [Rooms]
+      summary: Занятые слоты комнаты на дату
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+        - { name: date, in: query, required: true, schema: { type: string, format: date } }
+        - { name: offset, in: query, schema: { type: integer, minimum: -840, maximum: 840, default: 0 }, description: Смещение часового пояса клиента в минутах к востоку от UTC }
+      responses:
+        '200':
+          description: Занятые интервалы
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer }
+                        startsAt: { type: string, format: date-time }
+                        endsAt: { type: string, format: date-time }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /rooms/{id}/photo:
+    post:
+      tags: [Rooms]
+      summary: Загрузить фото комнаты (admin, JPG/PNG до 5 МБ)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '200':
+          description: Фото загружено
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      photoUrl: { type: string }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /amenities:
+    get:
+      tags: [Rooms]
+      summary: Справочник удобств
+      responses:
+        '200':
+          description: Список удобств
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Amenity' }
+
+  /bookings:
+    get:
+      tags: [Bookings]
+      summary: Все бронирования (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: roomId, in: query, schema: { type: integer } }
+        - { name: userId, in: query, schema: { type: integer } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/BookingStatus' } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - { name: sort, in: query, schema: { type: string, enum: [startsAt, -startsAt, createdAt, -createdAt], default: -startsAt } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200':
+          description: Страница бронирований
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Booking' }
+                  meta: { $ref: '#/components/schemas/Meta' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Bookings]
+      summary: Создать бронирование (409 при пересечении)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BookingInput' }
+      responses:
+        '201':
+          description: Бронирование создано
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Booking' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /bookings/my:
+    get:
+      tags: [Bookings]
+      summary: Мои бронирования
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/BookingStatus' } }
+        - { name: sort, in: query, schema: { type: string, enum: [startsAt, -startsAt], default: -startsAt } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200':
+          description: Страница бронирований текущего пользователя
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Booking' }
+                  meta: { $ref: '#/components/schemas/Meta' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /bookings/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+    patch:
+      tags: [Bookings]
+      summary: Изменить бронирование (владелец или admin; нельзя изменить начавшееся)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BookingUpdateInput' }
+      responses:
+        '200':
+          description: Бронирование обновлено
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Booking' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Bookings]
+      summary: Отменить бронирование (владелец или admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204': { description: Отменено }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /users/me:
+    get:
+      tags: [Users]
+      summary: Мой профиль
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Профиль
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    patch:
+      tags: [Users]
+      summary: Изменить профиль, язык и тему
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fullName: { type: string, minLength: 2, maxLength: 100 }
+                locale: { $ref: '#/components/schemas/Locale' }
+                theme: { $ref: '#/components/schemas/Theme' }
+      responses:
+        '200':
+          description: Профиль обновлён
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /users/me/avatar:
+    post:
+      tags: [Users]
+      summary: Загрузить аватар (JPG/PNG до 2 МБ)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '200':
+          description: Аватар загружен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      avatarUrl: { type: string }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /users/me/password:
+    post:
+      tags: [Users]
+      summary: Сменить пароль
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword: { type: string }
+                newPassword: { type: string, minLength: 8 }
+      responses:
+        '204': { description: Пароль изменён }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /users:
+    get:
+      tags: [Users]
+      summary: Список пользователей (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: search, in: query, schema: { type: string }, description: По email и имени }
+        - { name: role, in: query, schema: { type: string, enum: [guest, employee, admin] } }
+        - { name: blocked, in: query, schema: { type: boolean } }
+        - { name: sort, in: query, schema: { type: string, enum: [fullName, email, createdAt, -createdAt], default: -createdAt } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200':
+          description: Страница пользователей
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/User' }
+                  meta: { $ref: '#/components/schemas/Meta' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /users/{id}/role:
+    patch:
+      tags: [Users]
+      summary: Изменить роль (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role: { type: string, enum: [employee, admin] }
+      responses:
+        '200':
+          description: Роль изменена
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /users/{id}/block:
+    patch:
+      tags: [Users]
+      summary: Заблокировать / разблокировать (admin; себя блокировать нельзя)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [blocked]
+              properties:
+                blocked: { type: boolean }
+      responses:
+        '200':
+          description: Статус изменён
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /notifications:
+    get:
+      tags: [Notifications]
+      summary: Мои уведомления
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: unread, in: query, schema: { type: boolean } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200':
+          description: Страница уведомлений
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Notification' }
+                  meta: { $ref: '#/components/schemas/Meta' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /notifications/{id}/read:
+    patch:
+      tags: [Notifications]
+      summary: Отметить уведомление прочитанным
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      responses:
+        '200':
+          description: Уведомление обновлено
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Notification' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /stats/dashboard:
+    get:
+      tags: [Stats]
+      summary: Данные для дашборда (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: Статистика
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/DashboardStats' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
+
+  responses:
+    ValidationError:
+      description: Ошибка валидации
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: Нет или недействителен токен
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: Недостаточно прав
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Не найдено
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: Конфликт (например, пересечение бронирований или занятый email)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, example: BOOKING_OVERLAP }
+            message: { type: string, example: Комната уже занята на выбранное время }
+            details:
+              type: array
+              items:
+                type: object
+                properties:
+                  field: { type: string }
+                  message: { type: string }
+    Meta:
+      type: object
+      properties:
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+    Locale: { type: string, enum: [ru, en] }
+    Theme: { type: string, enum: [light, dark, system] }
+    BookingStatus: { type: string, enum: [ACTIVE, CANCELLED] }
+    RegisterRequest:
+      type: object
+      required: [email, password, fullName]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        fullName: { type: string, minLength: 2, maxLength: 100 }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+    TokenPair:
+      type: object
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        email: { type: string, format: email }
+        fullName: { type: string }
+        avatarUrl: { type: string, nullable: true }
+        roles:
+          type: array
+          items: { type: string }
+        isBlocked: { type: boolean }
+        locale: { $ref: '#/components/schemas/Locale' }
+        theme: { $ref: '#/components/schemas/Theme' }
+        createdAt: { type: string, format: date-time }
+    Amenity:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+    Room:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        capacity: { type: integer }
+        floor: { type: integer }
+        photoUrl: { type: string, nullable: true }
+        isActive: { type: boolean }
+        amenities:
+          type: array
+          items: { $ref: '#/components/schemas/Amenity' }
+    RoomInput:
+      type: object
+      required: [name, capacity, floor]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 100 }
+        description: { type: string, maxLength: 1000 }
+        capacity: { type: integer, minimum: 1, maximum: 200 }
+        floor: { type: integer }
+        isActive: { type: boolean }
+        amenityIds:
+          type: array
+          items: { type: integer }
+    BookingInput:
+      type: object
+      required: [roomId, title, startsAt, endsAt]
+      properties:
+        roomId: { type: integer }
+        title: { type: string, minLength: 2, maxLength: 150 }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time, description: 'Позже startsAt, не более 4 часов, шаг 30 минут' }
+    BookingUpdateInput:
+      type: object
+      properties:
+        roomId: { type: integer }
+        title: { type: string, minLength: 2, maxLength: 150 }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time }
+    Booking:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time }
+        status: { $ref: '#/components/schemas/BookingStatus' }
+        room: { $ref: '#/components/schemas/Room' }
+        user:
+          type: object
+          properties:
+            id: { type: integer }
+            fullName: { type: string }
+        createdAt: { type: string, format: date-time }
+    Notification:
+      type: object
+      properties:
+        id: { type: integer }
+        type: { type: string, enum: [BOOKING_CREATED, BOOKING_UPDATED, BOOKING_CANCELLED] }
+        text: { type: string }
+        isRead: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    DashboardStats:
+      type: object
+      properties:
+        totalBookings: { type: integer }
+        averageDurationMinutes: { type: number }
+        topRoom:
+          type: object
+          nullable: true
+          properties:
+            roomId: { type: integer }
+            name: { type: string }
+            bookings: { type: integer }
+        byDay:
+          type: array
+          items:
+            type: object
+            properties:
+              date: { type: string, format: date }
+              bookings: { type: integer }
+        byRoom:
+          type: array
+          items:
+            type: object
+            properties:
+              roomId: { type: integer }
+              name: { type: string }
+              hoursBooked: { type: number }
