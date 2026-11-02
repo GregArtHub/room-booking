@@ -3,7 +3,11 @@
 Fullstack MVP: сотрудники бронируют переговорные комнаты в календаре слотов, система не допускает пересечений,
 администратор управляет комнатами и пользователями и видит статистику загрузки.
 
-**Публичная ссылка на развёрнутое приложение:** _указать после деплоя (см. раздел «Деплой»)_
+**Публичная ссылка на развёрнутое приложение (временный стенд):** https://for-choose-storm-cheapest.trycloudflare.com
+
+> Стенд запущен на компьютере разработчика через Cloudflare Tunnel (см. раздел «Деплой»). Адрес меняется при каждом
+> перезапуске туннеля, актуальная ссылка указывается здесь на момент защиты. Приложение всегда можно запустить
+> локально одной командой (см. «Запуск одной командой»).
 
 ## Стек (зафиксирован)
 
@@ -24,10 +28,13 @@ cp .env.example .env          # при необходимости поменяй
 docker compose up --build
 ```
 
+В PowerShell вместо `cp` используйте `copy .env.example .env`.
+
 - Приложение: http://localhost:8080
 - Swagger UI: http://localhost:8080/api/docs (или http://localhost:3000/api/docs)
 
 При старте контейнер backend применяет миграции и (при `RUN_SEED=true`) наполняет БД тестовыми данными.
+Остановить: `docker compose down`; сбросить базу и загруженные файлы: `docker compose down -v`.
 
 ## Тестовые учётные записи
 
@@ -61,9 +68,8 @@ npm install
 npm run dev                  # http://localhost:5173 (прокси на backend настроен в vite.config.ts)
 ```
 
-> После первого `npm install` закоммитьте `package-lock.json` в `backend/` и `frontend/`, затем в
-> `.github/workflows/ci.yml` замените `npm install` на `npm ci`.
-> Перед первым коммитом выполните `npm run format` в обеих папках, чтобы форматтер в CI проходил.
+Файлы `package-lock.json` закоммичены в `backend/` и `frontend/`, в CI используется `npm ci`.
+Перед коммитом выполняйте `npm run format` и `npm run lint` в обеих папках: форматтер и линтер проверяются в CI.
 
 ## Тесты
 
@@ -73,7 +79,11 @@ cd backend  && npm run test:e2e    # интеграционные тесты н�
 cd frontend && npm test            # тесты компонентов
 ```
 
-Список тестов и шаблон отчёта: `docs/TEST_REPORT.md`.
+Интеграционные тесты очищают таблицы, поэтому запускайте их только на отдельной базе (например, `booking_test`),
+никогда не на рабочей.
+
+Результаты: backend — 75 unit-тестов, покрытие 91 % (порог 60 %), 15 интеграционных тестов;
+frontend — 15 тестов компонентов. Список тестов и отчёт о покрытии: `docs/TEST_REPORT.md`.
 
 ## Структура репозитория
 
@@ -121,13 +131,35 @@ docker-compose.yml      db + backend + frontend (Nginx)
 
 ## Процесс разработки
 
-- Ветка `main` защищена; работа в feature-ветках (`feat/…`, `fix/…`), слияние только через Pull Request.
+- Ветка `main` защищена: изменения только через Pull Request, перед слиянием должны пройти проверки CI (`backend`, `frontend`, `docker`).
+- Работа в feature-ветках (`feat/…`, `fix/…`, `ci/…`).
 - Описание PR содержит чек-лист самопроверки (`.github/pull_request_template.md`).
 - Сообщения коммитов — Conventional Commits (`feat: …`, `fix: …`, `test: …`, `docs: …`, `chore: …`).
 - CI на каждый PR: ESLint → Prettier → тесты → сборка → Docker-образы.
 - Задачи ведутся на канбан-доске (GitHub Projects), user stories — `docs/USER_STORIES.md`.
 
 ## Деплой
+
+### Временный стенд через Cloudflare Tunnel (используется сейчас)
+
+Приложение запускается в Docker на компьютере разработчика и публикуется наружу через quick tunnel:
+
+```bash
+docker compose up -d
+cloudflared tunnel --url http://localhost:8080
+# в выводе появится адрес вида https://что-то-там.trycloudflare.com
+```
+
+Затем в `.env` указать полученный адрес (без слэша в конце) и пересоздать backend, иначе CORS и WebSocket не заработают:
+
+```bash
+# .env
+FRONTEND_URL=https://что-то-там.trycloudflare.com
+
+docker compose up -d --force-recreate backend
+```
+
+Ограничения: стенд доступен, пока работают компьютер, Docker и процесс `cloudflared`; адрес меняется при каждом запуске туннеля.
 
 ### VPS колледжа / любой сервер с Docker
 
