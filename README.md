@@ -1,157 +1,84 @@
-# RoomBook — платформа бронирования переговорных
+<div align="center">
+  <img src="https://i.giphy.com/media/l41lI4bYmcsPJX9Go/giphy.gif" width="100%" alt="Rick and Morty — Wubba Lubba Dub Dub"/>
+</div>
 
-Fullstack MVP: сотрудники бронируют переговорные комнаты в календаре слотов, система не допускает пересечений,
-администратор управляет комнатами и пользователями и видит статистику загрузки.
+<h1 align="center">Привет 👋, я Гриша</h1>
 
-**Публичная ссылка на развёрнутое приложение:** _указать после деплоя (см. раздел «Деплой»)_
+<p align="center">
+  <b>hellogregorat</b> · 18 лет · Frontend-разработчик из России 🇷🇺
+</p>
 
-## Стек (зафиксирован)
+<p align="center">
+  <a href="https://t.me/SosikYam">
+    <img src="https://img.shields.io/badge/Telegram-@SosikYam-26A5E4?style=for-the-badge&logo=telegram&logoColor=white"/>
+  </a>
+  <a href="https://github.com/hellogregorat">
+    <img src="https://img.shields.io/badge/GitHub-hellogregorat-181717?style=for-the-badge&logo=github&logoColor=white"/>
+  </a>
+  <a href="mailto:your-email@example.com">
+    <img src="https://img.shields.io/badge/Email-your--email@example.com-D14836?style=for-the-badge&logo=gmail&logoColor=white"/>
+  </a>
+</p>
 
-| Слой | Технологии |
-|---|---|
-| Frontend | React 18, TypeScript (strict), Vite, React Router, TanStack Query, Tailwind CSS, i18next, Recharts, Socket.IO client |
-| Backend | NestJS 10 (Node.js + TypeScript), Prisma ORM, Passport JWT, class-validator, Socket.IO |
-| БД | PostgreSQL 16, миграции Prisma |
-| API-документация | OpenAPI 3 — Swagger UI на `/api/docs`, спецификация в `docs/openapi.yaml` |
-| Инфраструктура | Docker, Docker Compose, Nginx |
-| Тесты | Jest + Supertest (backend), Vitest + Testing Library (frontend) |
-| CI | GitHub Actions: линтер → форматтер → тесты → сборка → Docker-образы |
+---
 
-## Запуск одной командой
+### 💼 Ищу работу
 
-```bash
-cp .env.example .env          # при необходимости поменяйте пароли и JWT_ACCESS_SECRET
-docker compose up --build
-```
+**Формат:** удалённо / офис (укажи город) &nbsp;|&nbsp; **Готовность:** стажировка / junior-позиция &nbsp;|&nbsp; **Стек:** React, JavaScript, HTML/CSS
 
-- Приложение: http://localhost:8080
-- Swagger UI: http://localhost:8080/api/docs (или http://localhost:3000/api/docs)
+Открыт к предложениям — пишите в Telegram или на почту выше.
 
-При старте контейнер backend применяет миграции и (при `RUN_SEED=true`) наполняет БД тестовыми данными.
+---
 
-## Тестовые учётные записи
+### 👨‍💻 Обо мне
 
-| Роль | Email | Пароль |
+Привет! Меня зовут Григорий, мне 18 лет, живу в России.
+
+Я веб-разработчик. Больше всего мне нравится **фронтенд** — люблю делать интерфейсы, с которыми приятно взаимодействовать. Сейчас параллельно изучаю бэкенд (укажи стек, например Node.js или Python), чтобы лучше понимать, как всё работает под капотом.
+
+В свободное время играю в настольный теннис 🏓 — это мой основной способ отключиться от монитора и немного подвигаться.
+
+---
+
+### 🛠 Технологии и языки
+
+<p align="left">
+  <img src="https://skillicons.dev/icons?i=html,css,sass,js,react,redux,d3" />
+</p>
+
+| Технология | Уровень | Где применял |
 |---|---|---|
-| Администратор | `admin@example.com` | `Admin123!` |
-| Сотрудник | `employee@example.com` | `Employee123!` |
-| Сотрудник | `employee2@example.com` | `Employee123!` |
-| Гость | без входа: просмотр комнат и расписания | — |
+| **HTML5** — семантическая вёрстка | уверенно | во всех проектах |
+| **CSS / SASS** — стилизация и препроцессоры | уверенно | Technology-integration |
+| **JavaScript (Vanilla)** — чистый JS без лишних зависимостей | уверенно | Technology-integration |
+| **React** — основной фреймворк для интерфейсов | уверенно | NEON-PANG |
+| **Redux** — управление состоянием | изучаю | — |
+| **d3.js** — визуализация данных | изучаю | — |
 
-В seed: 6 комнат, 5 удобств, несколько бронирований на ближайшие дни.
+---
 
-## Разработка без Docker
+### 🚀 Проекты
 
-```bash
-# 1. БД
-docker run -d --name booking-db -e POSTGRES_USER=booking -e POSTGRES_PASSWORD=booking \
-  -e POSTGRES_DB=booking -p 5432:5432 postgres:16-alpine
+**[NEON-PANG](https://github.com/hellogregorat/NEON-PANG)**
+Веб-приложение в тематике корейского PC bang. Стек: **Next.js, React**.
+_Добавь сюда: что конкретно реализовано (авторизация, бронирование мест, каталог и т.п.), ссылку на live-demo, 1 скриншот._
 
-# 2. Backend
-cd backend
-cp .env.example .env
-npm install
-npx prisma migrate deploy
-npx prisma db seed
-npm run start:dev            # http://localhost:3000/api
+**[Technology-integration](https://github.com/hellogregorat/Technology-integration)**
+Многостраничный сайт на чистом HTML, CSS и JavaScript.
+_Добавь сюда: зачем делал проект (учебный/пет-проект), что отрабатывал (адаптивная вёрстка, анимации и т.д.), ссылку на demo._
 
-# 3. Frontend (в другом терминале)
-cd frontend
-npm install
-npm run dev                  # http://localhost:5173 (прокси на backend настроен в vite.config.ts)
-```
+> 💡 В README каждого проекта стоит добавить: скриншот/gif, стек, как запустить локально, что научился делать в процессе.
 
-> После первого `npm install` закоммитьте `package-lock.json` в `backend/` и `frontend/`, затем в
-> `.github/workflows/ci.yml` замените `npm install` на `npm ci`.
-> Перед первым коммитом выполните `npm run format` в обеих папках, чтобы форматтер в CI проходил.
+---
 
-## Тесты
+### 🏓 Хобби
 
-```bash
-cd backend  && npm run test:cov    # unit-тесты сервисного слоя + покрытие (порог 60%)
-cd backend  && npm run test:e2e    # интеграционные тесты на реальной БД (DATABASE_URL + migrate deploy)
-cd frontend && npm test            # тесты компонентов
-```
+- Настольный теннис
+- Кодить по вечерам
+- Разбираться, как под капотом работает React
 
-Список тестов и шаблон отчёта: `docs/TEST_REPORT.md`.
+---
 
-## Структура репозитория
-
-```
-backend/                NestJS API
-  prisma/               schema.prisma, миграции, seed.ts
-  src/
-    auth/ users/ rooms/ bookings/ notifications/ stats/    модули: controller -> service -> Prisma
-    common/             guards, фильтр ошибок, интерцептор ответов, пагинация, загрузка файлов
-  test/                 интеграционные тесты (e2e)
-frontend/               React SPA
-  src/{api,auth,components,pages,i18n,theme,lib}
-docs/                   OpenAPI, архитектура и ER, user stories, отчёт о тестировании
-.github/workflows/      CI
-docker-compose.yml      db + backend + frontend (Nginx)
-```
-
-## Функциональность (MVP по ТЗ)
-
-| Требование | Реализация |
-|---|---|
-| Регистрация, вход, JWT access + refresh, выход, восстановление пароля | `auth/`: ротация refresh-токенов, хэши токенов в БД, ссылка сброса выводится в лог backend |
-| RBAC, ≥ 3 ролей, проверка на сервере | роли guest / employee / admin; `RolesGuard`, проверка владельца брони в `BookingsService` |
-| CRUD с подтверждением удаления | комнаты, бронирования, пользователи; `ConfirmDialog` на клиенте |
-| Списки: пагинация, поиск, сортировка, фильтры на сервере | комнаты, брони, пользователи, уведомления |
-| Валидация на клиенте и сервере | формы с сообщениями об ошибках; DTO + `ValidationPipe`, единый формат ошибок |
-| Загрузка файлов с ограничением типа и размера | аватар (JPG/PNG ≤ 2 МБ), фото комнаты (≤ 5 МБ) |
-| Личный кабинет | профиль, аватар, смена пароля, история бронирований |
-| Панель администратора | комнаты, пользователи (роли, блокировка) |
-| Дашборд с графиком | `/admin/dashboard`: брони по дням, загрузка комнат, сводка |
-| Адаптивность 360–1920 px | Tailwind, мобильное меню, таблицы с горизонтальной прокруткой |
-
-### Дополнительный функционал
-
-- Уведомления в реальном времени (WebSocket / Socket.IO): владелец брони и администраторы узнают о создании, изменении и отмене.
-- Тёмная тема и интернационализация RU/EN; выбор сохраняется в профиле.
-
-## Основной сценарий для демонстрации
-
-1. Гость открывает список комнат, фильтрует, смотрит расписание комнаты.
-2. Сотрудник входит, выбирает слот и бронирует; второй сотрудник пытается занять тот же слот и получает ошибку.
-3. Сотрудник отменяет бронь, администратор мгновенно получает уведомление (WebSocket).
-4. Администратор создаёт комнату с фото, меняет роль пользователя, блокирует пользователя, смотрит дашборд.
-5. Переключение темы и языка.
-
-## Процесс разработки
-
-- Ветка `main` защищена; работа в feature-ветках (`feat/…`, `fix/…`), слияние только через Pull Request.
-- Описание PR содержит чек-лист самопроверки (`.github/pull_request_template.md`).
-- Сообщения коммитов — Conventional Commits (`feat: …`, `fix: …`, `test: …`, `docs: …`, `chore: …`).
-- CI на каждый PR: ESLint → Prettier → тесты → сборка → Docker-образы.
-- Задачи ведутся на канбан-доске (GitHub Projects), user stories — `docs/USER_STORIES.md`.
-
-## Деплой
-
-### VPS колледжа / любой сервер с Docker
-
-```bash
-git clone <репозиторий> && cd room-booking
-cp .env.example .env
-# в .env: надёжные POSTGRES_PASSWORD и JWT_ACCESS_SECRET, FRONTEND_URL=https://ваш-домен, RUN_SEED=true (на первый запуск)
-docker compose up -d --build
-```
-
-Для HTTPS поставьте перед контейнером frontend обратный прокси (Caddy или Nginx + certbot) на порт `WEB_PORT`.
-После первого запуска можно выставить `RUN_SEED=false`, чтобы не создавать тестовые данные повторно
-(повторный запуск seed безопасен: он ничего не затирает).
-
-### Бесплатный хостинг (Render)
-
-1. PostgreSQL: создать Render PostgreSQL, скопировать Internal Database URL.
-2. Backend: Web Service из `backend/` (Docker). Переменные: `DATABASE_URL`, `JWT_ACCESS_SECRET`, `FRONTEND_URL` (адрес клиента), `RUN_SEED=true`.
-3. Frontend: Web Service из `frontend/` (Docker); в `frontend/nginx.conf` замените `http://backend:3000` на публичный адрес backend-сервиса Render.
-4. Загруженные файлы на бесплатном плане Render не сохраняются между перезапусками — для демонстрации это допустимо; на VPS файлы лежат в томе `uploads`.
-
-## Документация
-
-- `docs/openapi.yaml` и Swagger UI на `/api/docs`
-- `docs/ARCHITECTURE.md` — компоненты, слои, ER-диаграмма, защита от пересечений, меры безопасности
-- `docs/USER_STORIES.md` — 13 user stories с критериями приёмки
-- `docs/TEST_REPORT.md` — список тестов и покрытие
+<p align="center">
+  <i>Wubba Lubba Dub Dub 🧪</i>
+</p>
